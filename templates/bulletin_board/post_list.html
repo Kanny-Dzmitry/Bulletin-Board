@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Главная - MMORPG Board{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Sidebar with categories -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-tags"></i> Категории</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'bulletin_board:post_list' %}" class="list-group-item list-group-item-action {% if not current_category %}active{% endif %}">
+                        <i class="bi bi-collection"></i> Все объявления
+                    </a>
+                    {% for category in categories %}
+                        <a href="{% url 'bulletin_board:category_detail' category.pk %}" class="list-group-item list-group-item-action {% if current_category == category.pk|stringformat:'s' %}active{% endif %}">
+                            {{ category.get_name_display }}
+                            <span class="badge bg-primary rounded-pill ms-2">{{ category.posts.count }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        {% if user.is_authenticated %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="bi bi-person"></i> Быстрые действия</h6>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'bulletin_board:post_create' %}" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-plus-circle"></i> Создать объявление
+                    </a>
+                    <a href="{% url 'bulletin_board:my_posts' %}" class="btn btn-outline-secondary w-100 mb-2">
+                        <i class="bi bi-journal-text"></i> Мои объявления
+                    </a>
+                    <a href="{% url 'bulletin_board:responses_to_posts' %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-envelope-open"></i> Отклики на объявления
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Main content -->
+    <div class="col-md-9">
+        <!-- Search and filters -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-8">
+                        <input type="text" class="form-control" name="q" placeholder="Поиск объявлений..." value="{{ request.GET.q }}">
+                    </div>
+                    <div class="col-md-4">
+                        <select class="form-select" name="category">
+                            <option value="">Все категории</option>
+                            {% for category in categories %}
+                                <option value="{{ category.pk }}" {% if current_category == category.pk|stringformat:'s' %}selected{% endif %}>
+                                    {{ category.get_name_display }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Найти
+                        </button>
+                        <a href="{% url 'bulletin_board:post_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Сбросить
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Posts -->
+        {% if posts %}
+            <div class="row">
+                {% for post in posts %}
+                    <div class="col-12 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        {% if post.image %}
+                                            <img src="{{ post.image.url }}" class="img-fluid rounded" alt="{{ post.title }}">
+                                        {% else %}
+                                            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 80px;">
+                                                <i class="bi bi-image text-muted fs-3"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-10">
+                                        <h5 class="card-title">
+                                            <a href="{% url 'bulletin_board:post_detail' post.pk %}" class="text-decoration-none">
+                                                {{ post.title }}
+                                            </a>
+                                        </h5>
+                                        <p class="card-text">
+                                            {{ post.content|truncatewords:30|striptags }}
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-person"></i> {{ post.author.username }}
+                                                    <span class="mx-2">|</span>
+                                                    <i class="bi bi-calendar"></i> {{ post.created_at|date:"d.m.Y H:i" }}
+                                                    <span class="mx-2">|</span>
+                                                    <i class="bi bi-tag"></i> {{ post.category.get_name_display }}
+                                                </small>
+                                            </div>
+                                            <div>
+                                                <span class="badge bg-secondary">
+                                                    <i class="bi bi-chat-left-text"></i> {{ post.get_responses_count }} откликов
+                                                </span>
+                                                {% if post.status == 'active' %}
+                                                    <span class="badge bg-success">Активно</span>
+                                                {% elif post.status == 'closed' %}
+                                                    <span class="badge bg-danger">Закрыто</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                        {{ num }}
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x text-muted" style="font-size: 4rem;"></i>
+                <h4 class="mt-3">Объявления не найдены</h4>
+                <p class="text-muted">Попробуйте изменить параметры поиска или создать новое объявление</p>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'bulletin_board:post_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Создать объявление
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 
